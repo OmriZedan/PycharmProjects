@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 import cv2
 import pytesseract
@@ -52,7 +53,7 @@ def find_plate_number_in_pytesseract_result(pytesseract_result: str) -> str:
     return MISSING
 
 
-def detect_plate_number(image_path: str) -> str:
+def detect_plate_number(image_path: str) -> (str, str):
     """
     detect vehicle registration plate in an image.
     :param image_path: path to image.
@@ -62,7 +63,7 @@ def detect_plate_number(image_path: str) -> str:
     result = pytesseract.image_to_string(img, lang='eng',
                                          config='--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 
-    return find_plate_number_in_pytesseract_result(pytesseract_result=result)
+    return time.strftime('%Y-%m-%d %H:%M:%S'), find_plate_number_in_pytesseract_result(pytesseract_result=result)
 
 
 # ================================================ MAIN SCRIPT ======================================================= #
@@ -71,22 +72,30 @@ data_path = "data"
 data = dict()
 path = os.walk(data_path)
 image_paths = []
+# Try retrieving images from directory
 for root, directories, images in path:
     for image in images:
         image_paths.append(os.path.join(root, image))
 assert image_paths != [], "Message: Failed to retrieve images!"
 
+# build a pandas DataFrame from image-paths
 df = pd.DataFrame({'image path': image_paths})
 
-# Retrieve registration plate from image using "detect_plate_number" method.
-df['registration plate'] = df['image path'].apply(detect_plate_number)
+# Retrieve a plate scan from image using 'detect_plate_number' method.
+df['scan'] = df['image path'].apply(detect_plate_number)
 
-# Get approval for each plate using "query_entrance_approval" method.
-df['approval'] = df['registration plate'].apply(query_entrance_approval)
+# Divide 'scan' column into 'timestamp' and 'registration plate'.
+df['timestamp'] = df['scan'].apply(lambda t: t[0])
+df['registration plate'] = df['scan'].apply(lambda t: t[1])
 
-# Divide approval column into "approval" and "reason for approval".
-df['reason'] = df['approval'].apply(lambda t: t[1])
-df['approval'] = df['approval'].apply(lambda t: t[0])
+# Get approval for each plate using 'query_entrance_approval' method.
+df['approval query'] = df['registration plate'].apply(query_entrance_approval)
+
+# Divide 'approval query' column into 'approval' and 'reason for approval'.
+df['approval'] = df['approval query'].apply(lambda t: t[0])
+df['reason'] = df['approval query'].apply(lambda t: t[1])
+
+df.drop(columns=['image path', 'scan', 'approval query'], inplace=True)
 
 try:
     df.to_sql('car details', engine, if_exists='append')
