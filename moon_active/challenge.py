@@ -78,8 +78,13 @@ assert image_paths != [], "Message: Failed to retrieve images!"
 
 df = pd.DataFrame({'image path': image_paths})
 
+# Retrieve registration plate from image using "detect_plate_number" method.
 df['registration plate'] = df['image path'].apply(detect_plate_number)
+
+# Get approval for each plate using "query_entrance_approval" method.
 df['approval'] = df['registration plate'].apply(query_entrance_approval)
+
+# Divide approval column into "approval" and "reason for approval".
 df['reason'] = df['approval'].apply(lambda t: t[1])
 df['approval'] = df['approval'].apply(lambda t: t[0])
 
