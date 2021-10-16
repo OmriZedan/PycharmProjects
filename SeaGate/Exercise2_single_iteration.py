@@ -77,7 +77,7 @@ def find_sub_array_with_largest_sum(array: list) -> Tuple[int, int]:
 
 def test_find_sub_array_with_largest_sum(array: list):
     start, end = find_sub_array_with_largest_sum(array)
-    print(f"The the highest is confined within: ({start},{end})")
+    print(f"The the highest sum is confined within: ({start},{end})")
 
 
 test_find_sub_array_with_largest_sum([0, 10, 20, -647, 10, 4, 20])
